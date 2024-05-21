@@ -24,7 +24,6 @@ jobs:
         with:
           app-id: ${{ vars.FILTER_APP_ID }}
           private-key: ${{ secrets.FILTER_APP_PRIVATE_KEY }}
-          filter-on: 'RELEASE'
           filter-by: 'releases/1.0'
 
   run_workflow:
