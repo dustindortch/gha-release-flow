@@ -35,13 +35,13 @@ jobs:
           set -eux
           ENVIRONMENTS=$(gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/${repo}/environments | jq -r '.environments[] | .name')
           separator=''
-          matrix="{"
+          matrix='['
           for environment in $ENVIRONMENTS; do
             value=$(gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/${repo}/environments/${environment}/variables | jq -r ".variables[] | select(.name == \"${FILTER_ON}\") | select(.value == \"${FILTER_BY}\") | {\"environment\": \"${environment}\"} | tojson")
             [ -n "${value}" ] && matrix=${matrix}${separator}${value}
             separator=','
           done
-          matrix="${matrix}}"
+          matrix="${matrix}]"
           echo "matrix=$(echo $matrix | jq -r '. | tojson')" >> $GITHUB_OUTPUT
 
   run_workflow:
