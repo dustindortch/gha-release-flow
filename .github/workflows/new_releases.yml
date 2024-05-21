@@ -28,7 +28,7 @@ jobs:
       - id: set-matrix
         name: Create matrix inclusions
         env:
-          FILTER_ON: var.FILTER_ON
+          FILTER_ON: ${{ vars.FILTER_ON }}
           FILTER_BY: "releases/1.0"
           GH_TOKEN: ${{ steps.generatre-app-token.outputs.token }}
         run: |
