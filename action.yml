@@ -1,0 +1,53 @@
+---
+author: Dustin Dortch
+name: Release Flow
+description: Builds a strategy matrix based on GitHub Actions environments, filtering on an environment variable specified by "FILTER_ON" and a vlaue specified by "FILTER_BY".  Returns JSON list of environments.
+
+inputs:
+  app-id:
+    description: GitHub App "app id" with 'read' permissions for "Environments" and "Variables".  Safe to store as repository "variable" and provide as `${{ vars.FILTER_APP_CLIENT_ID }}`.
+    required: true
+  private-key:
+    description: GitHub App "private key" associated with "app id".  Safe to store as repository "secret" and provide as `${{ secrets.FILTER_APP_PRIVATE_KEY }}`.
+    required: true
+  filter_on:
+    default: 'RELEASE'
+    description: Environment variable to filter on.  Defaults to "RELEASE".  Safe to store as repository "variable" and provide as `${{ vars.FILTER_ON }}`.
+    required: false
+  filter_by:
+    description: Value to filter environment variable by.  Provide as `${{ github.ref_name }}`.
+outputs:
+  matrix:
+    description: Strategy matrix listing all environments matching "filter_on" and "filter_by".  Use in subsequent job as `include: ${{ fromJson(needs.<job_name>.outputs.matrix )}}` and within 'environment' as `environment: ${{ matrix.environment }}`.
+    value: ${{ steps.create-matrix.outputs.matrix }}
+
+runs:
+  using: composite
+  steps:
+    - id: generate-access-token
+      name: Generate access token
+      uses: actions/create-github-app-token@v1
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+
+    - id: create-matrix
+      name: Create strategy matrix
+      env:
+        filter_on: ${{ inputs.filter_on }}
+        filter_by: ${{ inputs_filter_by }}
+        GH_TOKEN: ${{ steps.generate-access-token.outputs.token }}
+      run: |
+        set -eux
+        ENVIRONMENTS=$(gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/${repo}/environments | jq -r '.environments[] | .name')
+        separator=''
+        matrix='['
+        for environment in $ENVIRONMENTS; do
+          value=$(gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/${repo}/environments/${environment}/variables | jq -r ".variables[] | select(.name == \"${FILTER_ON}\") | select(.value == \"${FILTER_BY}\") | {\"environment\": \"${environment}\"} | tojson")
+          [ -n "${value}" ] && matrix=${matrix}${separator}${value}
+          separator=','
+        done
+        matrix="${matrix}]"
+        echo "matrix=$(echo $matrix | jq -r '. | tojson')" >> $GITHUB_OUTPUT
+
+...
