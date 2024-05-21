@@ -35,9 +35,10 @@ runs:
 
     - id: create-matrix
       name: Create strategy matrix
+      shell: bash
       env:
         filter-on: ${{ inputs.filter-on }}
-        filter-by: ${{ inputs_filter-by }}
+        filter-by: ${{ inputs.filter-by }}
         GH_TOKEN: ${{ steps.generate-access-token.outputs.token }}
         repo: ${{ github.repository }}
       run: |
