@@ -1,0 +1,55 @@
+---
+name: Release Flow matrix
+
+on:
+  workflow_dispatch:
+  
+permissions:
+  actions_variables: read
+  contents: read
+  environments: read
+  id-token: write
+  pull-requests: write
+
+jobs:
+
+  build_matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    env:
+      repo: ${{ github.repository }}
+      GH_TOKEN: ${{ github.token }}
+      FILTER_ON: "RELEASE"
+      FILTER_BY: "releases/1.0"
+    steps:
+      - id: set-matrix
+        name: Create matrix inclusions
+        run: |
+          set -eux
+          ENVIRONMENTS=$(gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/${repo}/environments | jq -r '.environments[] | .name')
+          separator=''
+          matrix="{"
+          for environment in $ENVIRONMENTS; do
+            value=$(gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/${GITHUB_OWNER}/${GITHUB_REPO}/environments/${environment}/variables | jq -r ".variables[] | select(.name == \"${FILTER_ON}\") | select(.value == \"${FILTER_BY}\") | {\"environment\": \"${environment}\"} | tojson")
+            [ -n "${value}" ] && matrix=${matrix}${separator}${value}
+            separator=','
+          done
+          matrix="${matrix}}"
+          echo "matrix=$(echo $matrix | jq -r '. | tojson')" >> $GITHUB_OUTPUT
+
+  run_workflow:
+    needs: build_matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include: ${{ fromJson(needs.build_matrix.outputs.matrix) }}
+    environment: ${{ matrix.environment }}
+    steps:
+      - id: run-workflow
+        name: Run workflow
+        run: |
+          set -eux
+          echo "Running workflow for ${{ matrix.environment }}"
+
+...
