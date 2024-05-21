@@ -5,22 +5,22 @@ description: Builds a strategy matrix based on GitHub Actions environments, filt
 
 inputs:
   app-id:
-    description: GitHub App "app id" with 'read' permissions for "Environments" and "Variables".  Safe to store as repository "variable" and provide as '${{ vars.FILTER_APP_CLIENT_ID }}'.
+    description: GitHub App "app id" with 'read' permissions for "Environments" and "Variables".  Safe to store as repository "variable".
     required: true
   private-key:
-    description: GitHub App "private key" associated with "app id".  Safe to store as repository "secret" and provide as '${{ secrets.FILTER_APP_PRIVATE_KEY }}'.
+    description: GitHub App "private key" associated with "app id".  Safe to store as repository "secret".
     required: true
   filter-on:
     default: 'RELEASE'
-    description: Environment variable to filter on.  Defaults to "RELEASE".  Safe to store as repository "variable" and provide as '${{ vars.filter-on }}'.
+    description: Environment variable to filter on.  Defaults to "RELEASE".  Safe to store as repository "variable".
     required: false
   filter-by:
     default: ${{ github.ref_name }}
-    description: Value to filter environment variable by.  Defaults to '${{ github.ref_name }}'.
+    description: Value to filter environment variable by.  Defaults to 'github.ref_name'.
     required: false
 outputs:
   matrix:
-    description: Strategy matrix listing all environments matching "filter-on" and "filter-by".  Use in subsequent job as `include: ${{ fromJson(needs.<job_name>.outputs.matrix )}}` and within 'environment' as `environment: ${{ matrix.environment }}`.
+    description: Strategy matrix listing all environments matching "filter-on" and "filter-by".  Use in subsequent job as `fromJson(needs.<job_name>.outputs.matrix' and within 'environment' as 'matrix.environment'.
     value: ${{ steps.create-matrix.outputs.matrix }}
 
 runs:
