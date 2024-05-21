@@ -21,8 +21,17 @@ jobs:
       FILTER_ON: "RELEASE"
       FILTER_BY: "releases/1.0"
     steps:
+      - id: generate-app-token
+        name: Generate App Token
+        uses: actions/create-github-app-token@v1
+        with:
+          app_id: ${{ vars.FILTER_APP_ID }}
+          private_key: ${{ secrets.FILTER_APP_CLIENT_SECRET }}
+
       - id: set-matrix
         name: Create matrix inclusions
+        env:
+          GITHUB_TOKEN: ${{ steps.generatre-app-token.outputs.token }}
         run: |
           set -eux
           ENVIRONMENTS=$(gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/${repo}/environments | jq -r '.environments[] | .name')
