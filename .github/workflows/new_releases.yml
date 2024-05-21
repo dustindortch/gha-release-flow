@@ -30,7 +30,7 @@ jobs:
         env:
           FILTER_ON: ${{ vars.FILTER_ON }}
           FILTER_BY: "releases/1.0"
-          GH_TOKEN: ${{ steps.generatre-app-token.outputs.token }}
+          GH_TOKEN: ${{ steps.generate-app-token.outputs.token }}
         run: |
           set -eux
           ENVIRONMENTS=$(gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/${repo}/environments | jq -r '.environments[] | .name')
