@@ -37,8 +37,8 @@ runs:
       name: Create strategy matrix
       shell: bash
       env:
-        filter-on: ${{ inputs.filter-on }}
-        filter-by: ${{ inputs.filter-by }}
+        filter_on: ${{ inputs.filter-on }}
+        filter_by: ${{ inputs.filter-by }}
         GH_TOKEN: ${{ steps.generate-access-token.outputs.token }}
         repo: ${{ github.repository }}
       run: |
@@ -47,7 +47,7 @@ runs:
         separator=''
         matrix='['
         for environment in $ENVIRONMENTS; do
-          value=$(gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/${repo}/environments/${environment}/variables | jq -r ".variables[] | select(.name == \"${filter-on}\") | select(.value == \"${filter-by}\") | {\"environment\": \"${environment}\"} | tojson")
+          value=$(gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/${repo}/environments/${environment}/variables | jq -r ".variables[] | select(.name == \"${filter_on}\") | select(.value == \"${filter_by}\") | {\"environment\": \"${environment}\"} | tojson")
           [ -n "${value}" ] && matrix=${matrix}${separator}${value}
           separator=','
         done
