@@ -1,5 +1,5 @@
 ---
-name: Release Flow matrix
+name: New Releases
 
 on:
   workflow_dispatch:
