@@ -5,9 +5,7 @@ on:
   workflow_dispatch:
   
 permissions:
-  actions_variables: read
   contents: read
-  environments: read
   id-token: write
   pull-requests: write
 
