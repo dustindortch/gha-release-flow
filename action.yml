@@ -1,22 +1,22 @@
 ---
 author: Dustin Dortch
 name: Release Flow
-description: Builds a strategy matrix based on GitHub Actions environments, filtering on an environment variable specified by "FILTER_ON" and a vlaue specified by "FILTER_BY".  Returns JSON list of environments.
+description: Builds a strategy matrix based on GitHub Actions environments, filtering on an environment variable specified by "filter-on" and a vlaue specified by "filter-by".  Returns JSON list of environments.
 
 inputs:
   app-id:
-    description: GitHub App "app id" with 'read' permissions for "Environments" and "Variables".  Safe to store as repository "variable" and provide as `${{ vars.FILTER_APP_CLIENT_ID }}`.
+    description: GitHub App "app id" with 'read' permissions for "Environments" and "Variables".  Safe to store as repository "variable" and provide as '${{ vars.FILTER_APP_CLIENT_ID }}'.
     required: true
   private-key:
-    description: GitHub App "private key" associated with "app id".  Safe to store as repository "secret" and provide as `${{ secrets.FILTER_APP_PRIVATE_KEY }}`.
+    description: GitHub App "private key" associated with "app id".  Safe to store as repository "secret" and provide as '${{ secrets.FILTER_APP_PRIVATE_KEY }}'.
     required: true
   filter-on:
     default: 'RELEASE'
-    description: Environment variable to filter on.  Defaults to "RELEASE".  Safe to store as repository "variable" and provide as `${{ vars.FILTER_ON }}`.
+    description: Environment variable to filter on.  Defaults to "RELEASE".  Safe to store as repository "variable" and provide as '${{ vars.filter-on }}'.
     required: false
   filter-by:
     default: ${{ github.ref_name }}
-    description: Value to filter environment variable by.  Defaults to `${{ github.ref_name }}`.
+    description: Value to filter environment variable by.  Defaults to '${{ github.ref_name }}'.
     required: false
 outputs:
   matrix:
