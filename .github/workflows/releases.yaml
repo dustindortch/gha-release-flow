@@ -1,5 +1,5 @@
 ---
-name: Release Flow matrix
+name: New Releases
 
 on:
   push:
@@ -13,75 +13,27 @@ permissions:
 
 jobs:
 
-  build_matrix:
+  release_matrix:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      matrix: ${{ steps.create-matrix.outputs.matrix }}
     env:
       repo: ${{ github.repository }}
-      GH_TOKEN: ${{ github.token }}
     steps:
-      - id: set-matrix
-        name: Create matrix inclusions
-        run: |
-          set -eux
-          matrix="$(gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/${repo}/environments | jq -r '[ .environments[] | {environment: .name} ] | tojson' -)"
-          echo "matrix=$matrix" >> $GITHUB_OUTPUT
-
-  matrix_pruned:
-    needs: build_matrix
-    runs-on: ubuntu-latest
-    strategy:
-      matrix: 
-        include: ${{ fromJson(needs.build_matrix.outputs.matrix) }}
-    environment: ${{ matrix.environment }}
-    steps:
-      - id: new-matrix
-        if: github.ref_name == vars.release
-        name: Create new matrix file
-        run: |
-          set -eux
-          echo "{\"environment\":\"${{ matrix.environment }}\"}" > matrix.${{ matrix.environment }}
-      - id: list-files
-        name: List files
-        run: ls -la
-      - id: upload-artifact
-        name: Upload artifacts
-        if: github.ref_name == vars.release
-        uses: actions/upload-artifact@v4
+      - id: create-matrix
+        name: Create matrix
+        uses: dustindortch/github-actions-release-flow@v0.1
         with:
-          name: "matrix.${{ matrix.environment }}"
-          path: "matrix.${{ matrix.environment }}"
-
-  filtered_matrix:
-    needs: matrix_pruned
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - id: download-artifact
-        name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          merge-multiple: true
-          path: .
-          pattern: matrix.*
-      - id: list-files
-        name: List files
-        run: ls -la
-      - id: set-matrix
-        name: Create pruned matrix
-        run: |
-          set -eux
-          matrix="$(jq -rs '. | tojson' matrix.*)"
-          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+          app-id: ${{ vars.FILTER_APP_ID }}
+          private-key: ${{ secrets.FILTER_APP_PRIVATE_KEY }}
+          filter-by: ${{ github.ref_name }}
 
   run_workflow:
-    needs: filtered_matrix
+    needs: release_matrix
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include: ${{ fromJson(needs.filtered_matrix.outputs.matrix) }}
+        include: ${{ needs.release_matrix.outputs.matrix }}
     environment: ${{ matrix.environment }}
     steps:
       - id: run-workflow
