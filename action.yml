@@ -2,6 +2,9 @@
 author: Dustin Dortch
 name: Release Flow Strategy Matrix
 description: Builds a strategy matrix based on GitHub Actions environments filtered by those that align with a release.
+branding:
+  icon: filter
+  color: green
 
 inputs:
   app-id:
