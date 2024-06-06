@@ -1,35 +1,62 @@
-# github-actions-release-flow
+# gha-release-flow
 
-This repository shares an example workflow to support the use of Release Flow with GitHub Actions.  The need for this was written with Terraform as the use case.
+This repository provides a composite GitHub Action that can be reused in workflows to support the Release Flow branching strategy.  It also shares an example workflow to support the use of Release Flow with GitHub Actions.  The need for this was written with Terraform as the use case.
 
-## Situation
+The action requires a GitHub App to be created and associated with the repository.  The app requires 'read' permissions for "Environments" and "Variables".  The app-id is safe to store as repository variable.  The private-key should be stored as a repository secret.
 
-Terraform has many different patterns for use, but the premise behind writing good Terraform is to make it highly reusable.  This isn't just for modules, but also for compositions, or root modules.  If you push your code from lower environments to higher environments, the implication is that the code is tested, either in an automated manner or manually.  One practice that is extremely common and I strongly advocate against is creating a directory within a repository for each environment.  This is a bad practice on its face.  I get a lot of push back for this statement but I stand by it and will setup a card table in a park and debate (read: fight) you over it.  The folks that advocate for the multiple directories are commonly folks without a development background and they're solving for challenges created by other bad practices.  The right way to approach it is to fix all of the bad practices, not fix some bad practices with more bad practices.
+The result of the action is a strategy matrix to that is used to filter the environments to only those that are aligned to the release branch.  This allows for a single workflow to be used for all releases/environments.
 
-We have different environments so that we can evaluate the use in dev/test before we release to production.  We might also have different environments to support multiple deployments in production.  This could be for disaster recovery, resiliency, or stamping out multiple environments for load or different customers.
+## Inputs
 
-The different environments may not be the same, which is often the part of the push back.  Differences should be accommodated with variables, not with different directories.
+* app-id
+  * description: GitHub App "app id" with 'read' permissions for "Environments" and "Variables".  Safe to store as repository "variable".
+  * required: true
+* private-key
+  * description: GitHub App "private key" associated with "app id".  Safe to store as repository "secret".
+  * required: true
+* filter-on
+  * description: Environment variable to filter on.  Defaults to "RELEASE".  Safe to store as repository "variable".
+  * required: false
+* filter-by
+  * description: Value to filter environment variable by.  Defaults to 'github.ref_name'.
+  * required: false
 
-## Solutions
+## Outputs
 
-One approach to solving this is to use Git Flow.  This has been a popular aaproach for mature Terraform deployments and works quite well when using a CI platform or Terraform Cloud/Enterprise.  With such a strategy, a separate long-lived branch is created for each deployment.  With TFC/TFE, this could be accomplished with a dedicated workspace per branch.  With GitHub Actions, this can be accomplished with a separated GitHub environment per branch.  This is a good approach, but it's not the only approach.
+* matrix
+  * description: Strategy matrix listing all environments matching "filter-on" and "filter-by".  Use in subsequent job as `fromJson(needs.<job_name>.outputs.matrix' and within 'environment' as 'matrix.environment'.
 
-Git Flow presents many new challenges because the code has to be repeated merged to the multiple branches.  If there are only three environments, such as dev, test, and prod, this isn't very onerous.  Dev would be aligned with feature branches.  Once the code is proven functional, it would them be merged into a "develop" branch that would be pushed to the Test environment.  Once that code satisfies the necessary requirements to be deployed to production, it would be merged into the default branch that would be aligned to the production environment.  However, when more environments are added, the complexity of the merges increases.
+## Usage
 
-Release Flow simplifies this strategy maintaining a single long-lived branch.  Feature branches are still used and would be aligned to Dev enviornments.  Once the feature is proven, it would be merged into the default branch.  The default branch would be aligned to the Test environment.  Once the code is proven in Test, a release branch is created.  The release branch would be a medium-lived branch that will exist as long as that release is supported.  A good strategy is supporting N-2 releases.  Then, the environments can be updated to attach to a specific release.  Within TFC/TFE, this is easily accommodated updating which branch a workspace is aligned to.  With GitHub Actions, this can be accomplished with a separated GitHub environment per deployment, but how do we align the environment to a particular release branch?
+```yaml
+jobs:
 
-This is handled by defining the environment within the workflow.  But this also presents challenges.  Environments can be hardcoded within the workflow, but this means that multiple workflows would be required.  This makes for all of the same issues in having different directories for different environments.  The workflow could be copied and pasted to a new file and then updated, but this leaves opportunities for divergence and errors.  Using one workflow for all releases/environments would improve the maintainability of the workflow.
+  release_matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.create-matrix.outputs.matrix }}
+    env:
+      repo: ${{ github.repository }}
+    steps:
+      - id: create-matrix
+        name: Create matrix
+        uses: dustindortch/github-actions-release-flow@v1
+        with:
+          app-id: ${{ vars.FILTER_APP_ID }}
+          private-key: ${{ secrets.FILTER_APP_PRIVATE_KEY }}
+          filter-by: ${{ github.ref_name }}
 
-## The Journey
-
-GitHub Actions supports a concept of a Strategy Matrix for performing multiple builds.  It can also be used to support multiple environments.  So, we can trigger the workflow on pushes to 'releases/**' but we need to ensure that it executing against the correct environment.  Without hardcoding this, we can work on dynamically creating the matrix of environments.
-
-To support assigning an environment to a release branch, each environment will have a variable named "RELEASE" that will have the ref_name of the release branch.  This will be used to filter the matrix to only the environment that is aligned to the release branch.
-
-The next step is to build the matrix using this information.  I began testing this by using the GitHub Desktop client to query the repository for all of the environments.  Then, I would loop over the environments and query their variables to find the value of the RELEASE variable.  Any environments that had a RELEASE variable value that matched the ref_name would be included into the matrix.  Then, the matrix would be assigned to the subsequent jobs.  This worked on my machine.  Once it was deployed to GitHub, it failed.  The token used by the workflow doesn't have permissions to query the environments' variables.  I attempted to modify the permissions, but this didn't yeild the desired results.  Another option would be generate a PAT with the required permissions, but generating tokens has additional practices that should be followed and not having a token is just easier.
-
-This resulted in additional jobs being created.  The first job gets a list of all of the environments and creates a matrix for all of them.  The next job uses that matrix to reach each environment and being a process to prune the matrix.  The first thought was to use `jobs.<job_id>.if` with `github.ref_name == vars.release`, but this doesn't work because that condition is evaluated before `jobs.<job_id>.strategy.matrix` is evaluated; it creates a "Catch 22."  Performing the condition within a job step does work, but since there is no way to gracefully end a job early within a step, that isn't great because each step would require redundant conditions and that is tedious and error prone.  So, the next experiment was to build up outputs from this second job to create a new matrix for a third job.  There is a fundamental problem with this, however, when using a strategy matrix, only the outputs from the last iteration to complete are available.  CloudPosse has a set of actions that workaround this by using artifacts.  I attempted to use them, but the "read" action didn't work.  I also don't really like using marketplace Actions because they often break when they're not meticulously maintained and troubleshooting the tasks is more tedious than necessary.  When the task is a simple shell command, I would prefer to write it as a shell command.  So, I opted to use the upload and download artifact Actions provided by GitHub; they're very reliable.  In the future, maybe I will just switch this to shell commands, as well, becaues it is build into the GitHub client.
-
-So, now the artifacts are all created and uploaded with the second job.  The third job downloads the set of artifacts and combines them into a new pruned dynamic matrix as an output that is used by the fourth and subsequent jobs.  This allows three different environments to match to the same release branch and executed on in parallel.
-
-Please review the `releases.yaml` file to see the workflow in action.
+  run_workflow:
+    needs: release_matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include: ${{ needs.release_matrix.outputs.matrix }}
+    environment: ${{ matrix.environment }}
+    steps:
+      - id: run-workflow
+        name: Run workflow
+        run: |
+          set -eux
+          echo "Running workflow for ${{ matrix.environment }}"
+```

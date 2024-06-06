@@ -22,7 +22,7 @@ jobs:
     steps:
       - id: create-matrix
         name: Create matrix
-        uses: dustindortch/github-actions-release-flow@v0.1
+        uses: dustindortch/github-actions-release-flow@v1
         with:
           app-id: ${{ vars.FILTER_APP_ID }}
           private-key: ${{ secrets.FILTER_APP_PRIVATE_KEY }}
