@@ -1,7 +1,7 @@
 ---
 author: Dustin Dortch
-name: Release Flow
-description: Builds a strategy matrix based on GitHub Actions environments, filtering on an environment variable specified by "filter-on" and a vlaue specified by "filter-by".  Returns JSON list of environments.
+name: Release Flow Strategy Matrix
+description: Builds a strategy matrix based on GitHub Actions environments filtered by those that align with a release.
 
 inputs:
   app-id:
